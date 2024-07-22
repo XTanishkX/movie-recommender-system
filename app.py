@@ -2,6 +2,8 @@ import pickle
 import streamlit as st
 import requests
 import pandas as pd
+import gzip
+import shutil
 
 def fetch_poster(movie_id):
     url = "https://api.themoviedb.org/3/movie/{}?api_key=3287a7ac2ca9ddaa6e4ed8b373654025".format(movie_id)
@@ -51,34 +53,29 @@ def save_response_content(response, dest_path):
             if chunk:  # filter out keep-alive new chunks
                 f.write(chunk)
 
-def verify_file(filepath):
-    try:
-        with open(filepath, 'rb') as f:
-            pickle.load(f)
-        return True
-    except (pickle.UnpicklingError, EOFError, AttributeError, ImportError, IndexError) as e:
-        return False
-
 st.header('Movie Recommender System')
 movies_dict = pickle.load(open('movie_dict.pkl', 'rb'))
 
 movies = pd.DataFrame(movies_dict)
 
 # Google Drive file ID
-file_id = '1Bc3YJfYPKCz-UPRbOXUZ3ze-7YLLVgYM'
+file_id = '1zM3Zgdzz8-adxQpcHzrJXg3xcnymoPRn'
 
-# Destination path
-dest_path = 'similarity.pkl'
+# Destination paths
+compressed_file_path = 'similarity.pkl.gz'
+decompressed_file_path = 'similarity.pkl'
 
 # Download the file from Google Drive
-download_file_from_google_drive(file_id, dest_path)
+download_file_from_google_drive(file_id, compressed_file_path)
 
-# Verify the downloaded file
-if verify_file(dest_path):
-    with open(dest_path, 'rb') as f:
-        similarity = pickle.load(f)
-else:
-    st.error("Failed to download or load the similarity file correctly. Please try again.")
+# Decompress the file
+with gzip.open(compressed_file_path, 'rb') as f_in:
+    with open(decompressed_file_path, 'wb') as f_out:
+        shutil.copyfileobj(f_in, f_out)
+
+# Load the decompressed similarity data
+with open(decompressed_file_path, 'rb') as f:
+    similarity = pickle.load(f)
 
 movie_list = movies['title'].values
 selected_movie = st.selectbox(
@@ -104,6 +101,5 @@ if st.button('Show Recommendation'):
     with col5:
         st.text(recommended_movie_names[4])
         st.image(recommended_movie_posters[4])
-
 
 
