@@ -4,6 +4,7 @@ import requests
 import pandas as pd
 import gzip
 import shutil
+import os
 
 def fetch_poster(movie_id):
     url = "https://api.themoviedb.org/3/movie/{}?api_key=3287a7ac2ca9ddaa6e4ed8b373654025".format(movie_id)
@@ -53,6 +54,25 @@ def save_response_content(response, dest_path):
             if chunk:  # filter out keep-alive new chunks
                 f.write(chunk)
 
+def decompress_file(src_path, dest_path):
+    try:
+        with gzip.open(src_path, 'rb') as f_in:
+            with open(dest_path, 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
+    except Exception as e:
+        st.error(f"Error decompressing file: {e}")
+        return False
+    return True
+
+def verify_file(filepath):
+    try:
+        with open(filepath, 'rb') as f:
+            pickle.load(f)
+        return True
+    except (pickle.UnpicklingError, EOFError, AttributeError, ImportError, IndexError) as e:
+        st.error(f"Error loading pickle file: {e}")
+        return False
+
 st.header('Movie Recommender System')
 movies_dict = pickle.load(open('movie_dict.pkl', 'rb'))
 
@@ -68,14 +88,20 @@ decompressed_file_path = 'similarity.pkl'
 # Download the file from Google Drive
 download_file_from_google_drive(file_id, compressed_file_path)
 
-# Decompress the file
-with gzip.open(compressed_file_path, 'rb') as f_in:
-    with open(decompressed_file_path, 'wb') as f_out:
-        shutil.copyfileobj(f_in, f_out)
-
-# Load the decompressed similarity data
-with open(decompressed_file_path, 'rb') as f:
-    similarity = pickle.load(f)
+# Check if the file is downloaded correctly
+if os.path.exists(compressed_file_path):
+    # Decompress the file
+    if decompress_file(compressed_file_path, decompressed_file_path):
+        # Load the decompressed similarity data
+        if verify_file(decompressed_file_path):
+            with open(decompressed_file_path, 'rb') as f:
+                similarity = pickle.load(f)
+        else:
+            st.error("Failed to load the decompressed similarity file.")
+    else:
+        st.error("Failed to decompress the file.")
+else:
+    st.error("Failed to download the file.")
 
 movie_list = movies['title'].values
 selected_movie = st.selectbox(
@@ -101,5 +127,6 @@ if st.button('Show Recommendation'):
     with col5:
         st.text(recommended_movie_names[4])
         st.image(recommended_movie_posters[4])
+
 
 
