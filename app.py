@@ -2,7 +2,6 @@ import pickle
 import streamlit as st
 import requests
 import pandas as pd
-import gzip
 
 def fetch_poster(movie_id):
     url = "https://api.themoviedb.org/3/movie/{}?api_key=3287a7ac2ca9ddaa6e4ed8b373654025".format(movie_id)
@@ -61,13 +60,13 @@ movies = pd.DataFrame(movies_dict)
 file_id = '1Bc3YJfYPKCz-UPRbOXUZ3ze-7YLLVgYM'
 
 # Destination path
-dest_path = 'similarity.pkl.gz'
+dest_path = 'similarity.pkl'
 
 # Download the file from Google Drive
 download_file_from_google_drive(file_id, dest_path)
 
-# Load the similarity data from the compressed gzip file
-with gzip.open(dest_path, 'rb') as f:
+# Load the similarity data
+with open(dest_path, 'rb') as f:
     similarity = pickle.load(f)
 
 movie_list = movies['title'].values
