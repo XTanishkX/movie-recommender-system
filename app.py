@@ -53,7 +53,7 @@ movies_dict = pickle.load(open('movie_dict.pkl', 'rb'))
 movies = pd.DataFrame(movies_dict)
 
 # Dropbox file URL
-dropbox_url = 'https://www.dropbox.com/scl/fi/qdvf8z1m36zt3uc9kyv4g/similarity.pkl?rlkey=fobsf5lnujmlt6f856q24q7i4&st=3yrcffmz&dl=0'
+dropbox_url = 'https://www.dropbox.com/scl/fi/qdvf8z1m36zt3uc9kyv4g/similarity.pkl?rlkey=fobsf5lnujmlt6f856q24q7i4&st=x7980opw&dl=1'
 file_path = 'similarity.pkl'
 
 # Download the file from Dropbox
