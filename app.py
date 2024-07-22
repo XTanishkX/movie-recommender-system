@@ -51,6 +51,14 @@ def save_response_content(response, dest_path):
             if chunk:  # filter out keep-alive new chunks
                 f.write(chunk)
 
+def verify_file(filepath):
+    try:
+        with open(filepath, 'rb') as f:
+            pickle.load(f)
+        return True
+    except (pickle.UnpicklingError, EOFError, AttributeError, ImportError, IndexError) as e:
+        return False
+
 st.header('Movie Recommender System')
 movies_dict = pickle.load(open('movie_dict.pkl', 'rb'))
 
@@ -65,9 +73,12 @@ dest_path = 'similarity.pkl'
 # Download the file from Google Drive
 download_file_from_google_drive(file_id, dest_path)
 
-# Load the similarity data
-with open(dest_path, 'rb') as f:
-    similarity = pickle.load(f)
+# Verify the downloaded file
+if verify_file(dest_path):
+    with open(dest_path, 'rb') as f:
+        similarity = pickle.load(f)
+else:
+    st.error("Failed to download or load the similarity file correctly. Please try again.")
 
 movie_list = movies['title'].values
 selected_movie = st.selectbox(
@@ -93,5 +104,6 @@ if st.button('Show Recommendation'):
     with col5:
         st.text(recommended_movie_names[4])
         st.image(recommended_movie_posters[4])
+
 
 
