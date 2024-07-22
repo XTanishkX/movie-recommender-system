@@ -2,8 +2,6 @@ import pickle
 import streamlit as st
 import requests
 import pandas as pd
-import gzip
-import shutil
 import os
 
 def fetch_poster(movie_id):
@@ -27,42 +25,18 @@ def recommend(movie):
 
     return recommended_movie_names, recommended_movie_posters
 
-def download_file_from_google_drive(file_id, dest_path):
-    URL = "https://drive.google.com/uc?export=download"
-
-    session = requests.Session()
-    response = session.get(URL, params={'id': file_id}, stream=True)
-    token = get_confirm_token(response)
-
-    if token:
-        params = {'id': file_id, 'confirm': token}
-        response = session.get(URL, params=params, stream=True)
-
-    save_response_content(response, dest_path)
-
-def get_confirm_token(response):
-    for key, value in response.cookies.items():
-        if key.startswith('download_warning'):
-            return value
-    return None
-
-def save_response_content(response, dest_path):
-    CHUNK_SIZE = 32768
-
-    with open(dest_path, "wb") as f:
-        for chunk in response.iter_content(CHUNK_SIZE):
-            if chunk:  # filter out keep-alive new chunks
+def download_file_from_dropbox(url, dest_path):
+    # Modify Dropbox link to ensure direct download
+    if url.endswith('?dl=0'):
+        url = url.replace('?dl=0', '?dl=1')
+    
+    response = requests.get(url, stream=True)
+    if response.status_code == 200:
+        with open(dest_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
                 f.write(chunk)
-
-def decompress_file(src_path, dest_path):
-    try:
-        with gzip.open(src_path, 'rb') as f_in:
-            with open(dest_path, 'wb') as f_out:
-                shutil.copyfileobj(f_in, f_out)
-    except Exception as e:
-        st.error(f"Error decompressing file: {e}")
-        return False
-    return True
+    else:
+        st.error(f"Failed to download file. Status code: {response.status_code}")
 
 def verify_file(filepath):
     try:
@@ -78,28 +52,20 @@ movies_dict = pickle.load(open('movie_dict.pkl', 'rb'))
 
 movies = pd.DataFrame(movies_dict)
 
-# Google Drive file ID
-file_id = '1zM3Zgdzz8-adxQpcHzrJXg3xcnymoPRn'
+# Dropbox file URL
+dropbox_url = 'https://www.dropbox.com/scl/fi/qdvf8z1m36zt3uc9kyv4g/similarity.pkl?rlkey=fobsf5lnujmlt6f856q24q7i4&st=3yrcffmz&dl=0'
+file_path = 'similarity.pkl'
 
-# Destination paths
-compressed_file_path = 'similarity.pkl.gz'
-decompressed_file_path = 'similarity.pkl'
-
-# Download the file from Google Drive
-download_file_from_google_drive(file_id, compressed_file_path)
+# Download the file from Dropbox
+download_file_from_dropbox(dropbox_url, file_path)
 
 # Check if the file is downloaded correctly
-if os.path.exists(compressed_file_path):
-    # Decompress the file
-    if decompress_file(compressed_file_path, decompressed_file_path):
-        # Load the decompressed similarity data
-        if verify_file(decompressed_file_path):
-            with open(decompressed_file_path, 'rb') as f:
-                similarity = pickle.load(f)
-        else:
-            st.error("Failed to load the decompressed similarity file.")
+if os.path.exists(file_path):
+    if verify_file(file_path):
+        with open(file_path, 'rb') as f:
+            similarity = pickle.load(f)
     else:
-        st.error("Failed to decompress the file.")
+        st.error("Failed to load the pickle file.")
 else:
     st.error("Failed to download the file.")
 
